@@ -182,17 +182,16 @@ const onMapInit = (map: any) => {
   mapInstance.value = map
   marker.value = new AMap.Marker({
     map: map,
-    position: mapCenter.value,
+    position: new AMap.LngLat(mapCenter.value[0], mapCenter.value[1]),
     icon: "https://a.amap.com/jsapi_demos/static/demo-center-v2/car.png",
     offset: new AMap.Pixel(-13, -26),
   });
   new AMap.Polyline({
-    map: map,
     path: trajectoryPoints.value,
     showDir: true,
     strokeColor: "#28F",  //线颜色
     strokeWeight: 6,      //线宽
-  });
+  }).setMap(map);
   marker.value.on('moving', function (e) {
     // 获取当前位置
     const currentPos = e.target.getPosition()

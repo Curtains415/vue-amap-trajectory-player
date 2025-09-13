@@ -9,7 +9,7 @@ import 'ant-design-vue/dist/reset.css'
 
 // 初始化高德地图API
 initAMapApiLoader({
-  key: '607ddc131bade72f00f7ddc78fbe0f68',
+  key: import.meta.env.VITE_AMAP_API_KEY || '',
   plugins: [
     'AMap.Scale',
     'AMap.OverView',

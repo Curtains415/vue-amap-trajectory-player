@@ -1,11 +1,11 @@
 # Vue AMap Trajectory Player
 
-一个基于 Vue3 + TypeScript 的高德地图轨迹播放器组件，支持轨迹播放控制、速度调节、进度控制等功能。
+一个基于 Vue3 + TypeScript 的高德地图轨迹播放演示项目，展示如何实现轨迹播放控制、速度调节、进度控制等功能。这是一个学习和参考用的示例项目，而非可复用的组件库。
 
 ## 功能特性
 
 - 🎮 **轨迹播放控制** - 支持播放、暂停、停止、重新播放
-- ⚡ **速度调节** - 支持 0.5x、1x、2x、4x 多种播放速度
+- ⚡ **速度调节** - 支持 1x、2x、4x 多种播放速度
 - 📊 **进度控制** - 支持拖拽进度条跳转到指定位置
 - 🗺️ **地图跟随** - 支持地图视角跟随轨迹移动
 - 📱 **响应式设计** - 适配不同屏幕尺寸
@@ -39,8 +39,18 @@ npm install
    - 注册账号并创建应用
    - 获取 Web 端 API Key
 
-2. 配置 API Key
-   - 在 `src/components/Amap.vue` 中替换 `YOUR_AMAP_API_KEY`
+2. 配置环境变量
+   ```bash
+   # 复制环境变量示例文件
+   cp .env.example .env
+   ```
+   
+   然后在 `.env` 文件中填入你的高德地图 API Key：
+   ```
+   VITE_AMAP_API_KEY=your_actual_api_key_here
+   ```
+   
+   ⚠️ **注意**: `.env` 文件包含敏感信息，请勿提交到版本控制系统
 
 ## 使用
 
@@ -96,7 +106,7 @@ src/
 
 ### 速度控制
 - `changeSpeed(speed: number)` - 改变播放速度
-- 支持速度：0.5, 1, 2, 4
+- 支持速度：1, 2, 4
 
 ### 进度控制
 - `onProgressChange(progress: number)` - 跳转到指定进度
