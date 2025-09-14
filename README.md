@@ -72,8 +72,13 @@ src/
 ├── components/
 │   ├── Amap.vue              # 高德地图轨迹播放组件
 │   └── TrajectoryPlayer.vue  # 轨迹播放器控制面板
+├── composables/
+│   └── useTrajectoryPlayer.ts # 轨迹播放器 hooks
+├── docs/
+│   └── useTrajectoryPlayer-hooks-documentation.md # hooks 技术文档
 ├── pages/
-│   └── HomePage.vue          # 主页面
+│   ├── HomePage.vue          # 主页面
+│   └── TrajectoryPlayerV2.vue # hooks 版本轨迹播放器
 ├── router/
 │   └── index.ts              # 路由配置
 ├── style.css                 # 全局样式
@@ -95,6 +100,20 @@ src/
 - 速度调节控制
 - 进度条和时间显示
 - 地图跟随开关
+
+### useTrajectoryPlayer Hooks
+基于 Vue 3 Composition API 的轨迹播放器 hooks，提供：
+- 完整的播放控制功能
+- 响应式状态管理
+- 多速度播放支持
+- 精确进度控制
+- 视角跟随功能
+- 性能优化的实现
+
+📖 **详细文档**: [useTrajectoryPlayer Hooks 技术文档](src/docs/useTrajectoryPlayer-hooks-documentation.md)
+
+### TrajectoryPlayerV2.vue
+使用 hooks 重构的轨迹播放器页面，展示了如何使用 `useTrajectoryPlayer` hooks 来实现轨迹播放功能。
 
 ## API 说明
 

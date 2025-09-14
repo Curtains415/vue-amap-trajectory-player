@@ -1,34 +1,34 @@
-<script setup lang="ts">
-import { useRouter } from 'vue-router'
-import Amap from '../components/Amap.vue'
-
-const router = useRouter()
-
-const navigateToHooksVersion = () => {
-  router.push('/trajectory-player-v2')
-}
-</script>
-
 <template>
-  <div class="home-page">
+  <div class="test-page">
     <!-- 导航按钮 -->
     <div class="navigation-bar">
       <h1 class="title">Vue AMap 轨迹播放器演示</h1>
       <div class="nav-buttons">
-        <button class="nav-btn active">原版组件</button>
-        <button class="nav-btn" @click="navigateToHooksVersion">Hooks 版本</button>
+        <button class="nav-btn" @click="navigateToHome">原版组件</button>
+        <button class="nav-btn active">Hooks 版本</button>
       </div>
     </div>
     
-    <!-- 地图组件 -->
-    <div class="map-container">
-      <Amap />
+    <!-- 组件容器 -->
+    <div class="component-container">
+      <TrajectoryPlayerV2 />
     </div>
   </div>
 </template>
 
+<script setup lang="ts">
+import { useRouter } from 'vue-router'
+import TrajectoryPlayerV2 from '../components/TrajectoryPlayerV2.vue'
+
+const router = useRouter()
+
+const navigateToHome = () => {
+  router.push('/')
+}
+</script>
+
 <style scoped>
-.home-page {
+.test-page {
   width: 100%;
   height: 100vh;
   display: flex;
@@ -79,7 +79,7 @@ const navigateToHooksVersion = () => {
   border-color: white;
 }
 
-.map-container {
+.component-container {
   flex: 1;
   overflow: hidden;
 }

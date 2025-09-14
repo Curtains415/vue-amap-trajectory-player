@@ -4,7 +4,15 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "keywords": ["vue", "amap", "trajectory", "player", "gaode", "maps", "typescript"],
+  "keywords": [
+    "vue",
+    "amap",
+    "trajectory",
+    "player",
+    "gaode",
+    "maps",
+    "typescript"
+  ],
   "author": "",
   "license": "MIT",
   "scripts": {
@@ -16,6 +24,7 @@
     "lint:fix": "eslint . --ext .ts,.vue --fix"
   },
   "dependencies": {
+    "@ant-design/icons-vue": "^7.0.1",
     "@vuemap/vue-amap": "^2.1.17",
     "ant-design-vue": "^4.2.6",
     "clsx": "^2.1.1",
