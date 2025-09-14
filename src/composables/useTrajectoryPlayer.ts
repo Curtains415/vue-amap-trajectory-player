@@ -6,11 +6,11 @@ export interface TrajectoryPlayerOptions {
 
 export function useTrajectoryPlayer(options: TrajectoryPlayerOptions = {}) {
   // 基础配置
-  const baseDuration = ref(options.baseDuration || 30)
+  const baseDuration = ref(options.baseDuration || 300)
 
   // 播放状态
   const playState = ref<'stopped' | 'playing' | 'paused'>('stopped')
-  const currentSpeed = ref(1)
+  const currentDuration = ref(baseDuration.value)
   const followView = ref(true)
 
   // 地图和轨迹相关
@@ -29,11 +29,11 @@ export function useTrajectoryPlayer(options: TrajectoryPlayerOptions = {}) {
   const isManualSeeking = ref(false)
   const isMovingTriggered = ref(false)
 
-  // 速度选项
-  const speedOptions = ref([
-    { label: 'X1', value: 1 },
-    { label: 'X2', value: 2 },
-    { label: 'X4', value: 4 },
+  // 速度选项 - 基于baseDuration动态计算
+  const speedOptions = computed(() => [
+    { label: 'X1', value: baseDuration.value },
+    { label: 'X2', value: baseDuration.value / 2 },
+    { label: 'X4', value: baseDuration.value / 4 },
   ])
 
   // 计算两点间距离
@@ -309,7 +309,7 @@ export function useTrajectoryPlayer(options: TrajectoryPlayerOptions = {}) {
       if (currentProgress.value >= 100) {
         // 进度为100%时，重置为0并从头开始播放
         currentProgress.value = 0
-        const duration = baseDuration.value / currentSpeed.value
+        const duration = currentDuration.value
         marker.value.moveAlong(trajectoryPoints.value, {
           duration: duration,
           autoRotation: true,
@@ -354,12 +354,10 @@ export function useTrajectoryPlayer(options: TrajectoryPlayerOptions = {}) {
               )
             }
 
-            // 基于剩余距离计算播放时长
+            // 基于剩余距离和当前duration计算播放时长
             const totalDist = totalDistance.value || 1
             const remainingDuration =
-              (baseDuration.value * remainingDistance) /
-              totalDist /
-              currentSpeed.value
+              (currentDuration.value * remainingDistance) / totalDist
 
             // 从当前位置开始播放剩余路径
             marker.value.moveAlong(remainingPath, {
@@ -369,7 +367,7 @@ export function useTrajectoryPlayer(options: TrajectoryPlayerOptions = {}) {
           }
         } else {
           // 如果无法获取当前位置，从起点开始播放
-          const duration = baseDuration.value / currentSpeed.value
+          const duration = currentDuration.value
           marker.value.moveAlong(trajectoryPoints.value, {
             duration: duration,
             autoRotation: true,
@@ -377,7 +375,7 @@ export function useTrajectoryPlayer(options: TrajectoryPlayerOptions = {}) {
         }
       } else {
         // 进度为0，从起点开始播放
-        const duration = baseDuration.value / currentSpeed.value
+        const duration = currentDuration.value
         marker.value.moveAlong(trajectoryPoints.value, {
           duration: duration,
           autoRotation: true,
@@ -437,8 +435,8 @@ export function useTrajectoryPlayer(options: TrajectoryPlayerOptions = {}) {
   }
 
   // 速度控制
-  const changeSpeed = (speed: number) => {
-    currentSpeed.value = speed
+  const changeDuration = (duration: number) => {
+    currentDuration.value = duration
 
     if (playState.value === 'playing' && marker.value) {
       // 获取当前精确位置
@@ -479,12 +477,10 @@ export function useTrajectoryPlayer(options: TrajectoryPlayerOptions = {}) {
           )
         }
 
-        // 基于剩余距离计算播放时长
+        // 基于剩余距离和当前duration计算播放时长
         const totalDist = totalDistance.value || 1
         const remainingDuration =
-          (baseDuration.value * remainingDistance) /
-          totalDist /
-          currentSpeed.value
+          (currentDuration.value * remainingDistance) / totalDist
 
         // 从当前精确位置以新速度继续播放
         marker.value.moveAlong(remainingPath, {
@@ -523,12 +519,10 @@ export function useTrajectoryPlayer(options: TrajectoryPlayerOptions = {}) {
       // 计算剩余距离
       const remainingDistance = totalDistance.value - currentDistance
 
-      // 计算播放时长（基于剩余距离和当前速度）
+      // 计算播放时长（基于剩余距离和当前duration）
       const totalDist = totalDistance.value || 1
       const remainingDuration =
-        (baseDuration.value * remainingDistance) /
-        totalDist /
-        currentSpeed.value
+        (currentDuration.value * remainingDistance) / totalDist
 
       // 使用moveAlong播放剩余路径
       marker.value.moveAlong(remainingPath, {
@@ -553,10 +547,10 @@ export function useTrajectoryPlayer(options: TrajectoryPlayerOptions = {}) {
           position
         )
 
-        // 基于距离和当前速度计算duration，保持与其他动画一致的速度感知
+        // 基于距离和当前duration计算播放时长，保持与其他动画一致的速度感知
         const totalDist = totalDistance.value || 1
         const duration = Math.max(
-          (baseDuration.value * distance) / totalDist / currentSpeed.value,
+          (currentDuration.value * distance) / totalDist,
           5
         )
 
@@ -595,7 +589,7 @@ export function useTrajectoryPlayer(options: TrajectoryPlayerOptions = {}) {
   return {
     // 状态
     playState,
-    currentSpeed,
+    currentDuration,
     followView,
     currentProgress,
     currentIndex,
@@ -614,7 +608,7 @@ export function useTrajectoryPlayer(options: TrajectoryPlayerOptions = {}) {
     pause,
     resume,
     stop,
-    changeSpeed,
+    changeDuration,
     onProgressChange,
     toggleFollowView,
     getPositionByProgress,

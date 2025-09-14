@@ -16,7 +16,7 @@
 
         <a-space>
           <span class="control-label">播放速度:</span>
-          <a-select v-model:value="currentSpeed" @change="changeSpeed" style="width: 120px">
+          <a-select v-model:value="currentDuration" @change="changeDuration" style="width: 120px">
             <a-select-option v-for="option in speedOptions" :key="option.value" :value="option.value">
               {{ option.label }}
             </a-select-option>
@@ -38,7 +38,7 @@
           <a-tag v-if="currentPosition" color="orange">
             坐标: ({{ currentPosition[0].toFixed(6) }}, {{ currentPosition[1].toFixed(6) }})
           </a-tag>
-          <a-tag color="purple">速度: {{ currentSpeed }}x</a-tag>
+          <a-tag color="purple">时长: {{ currentDuration }}ms</a-tag>
         </a-space>
         <a-slider v-model:value="currentProgress" :min="0" :max="100" :step="0.01" @change="onProgressChange"
           :tooltip-open="false" />
@@ -116,7 +116,7 @@ const {
   playState,
   playButtonText,
   followViewText,
-  currentSpeed,
+  currentDuration,
   speedOptions,
   followView,
   currentPosition,
@@ -125,7 +125,7 @@ const {
   // 方法
   togglePlay,
   stop,
-  changeSpeed,
+  changeDuration,
   onProgressChange,
   toggleFollowView,
   initializeTrajectory

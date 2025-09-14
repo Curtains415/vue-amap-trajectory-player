@@ -8,7 +8,7 @@
 
 * 🎮 **完整的播放控制**：支持播放、暂停、停止、恢复等操作
 
-* ⚡ **多速度播放**：内置 1x、2x、4x 速度选项，支持自定义速度
+* ⚡ **多速度播放**：基于 baseDuration 动态计算的 X1、X2、X4 速度选项，支持自定义时长
 
 * 📍 **精确进度控制**：基于距离计算的精确进度定位
 
@@ -33,7 +33,7 @@ export interface TrajectoryPlayerOptions {
 | 参数                   | 类型                      | 默认值 | 描述         |
 | -------------------- | ----------------------- | --- | ---------- |
 | options              | TrajectoryPlayerOptions | {}  | 配置选项       |
-| options.baseDuration | number                  | 30  | 基础播放时长（毫秒） |
+| options.baseDuration | number                  | 300  | 基础播放时长（毫秒） |
 
 ### 返回值
 
@@ -42,7 +42,7 @@ export interface TrajectoryPlayerOptions {
 | 属性               | 类型                                          | 描述              |
 | ---------------- | ------------------------------------------- | --------------- |
 | playState        | Ref<'stopped' \| 'playing' \| 'paused'>     | 播放状态            |
-| currentSpeed     | Ref<number>                                 | 当前播放速度          |
+| currentDuration  | Ref<number>                                 | 当前播放时长（毫秒）      |
 | followView       | Ref<boolean>                                | 视角跟随开关          |
 | currentProgress  | Ref<number>                                 | 当前进度百分比 (0-100) |
 | currentIndex     | Ref<number>                                 | 当前轨迹点索引         |
@@ -67,7 +67,7 @@ export interface TrajectoryPlayerOptions {
 | pause                       | -                                                         | void                      | 暂停播放       |
 | resume                      | -                                                         | void                      | 恢复播放       |
 | stop                        | -                                                         | void                      | 停止播放       |
-| changeSpeed                 | speed: number                                             | void                      | 改变播放速度     |
+| changeDuration              | duration: number                                          | void                      | 改变播放时长（毫秒） |
 | onProgressChange            | value: number                                             | void                      | 进度条变化处理    |
 | toggleFollowView            | -                                                         | void                      | 切换视角跟随     |
 | getPositionByProgress       | progress: number                                          | \[number, number] \| null | 根据进度获取位置   |
@@ -90,13 +90,14 @@ export interface TrajectoryPlayerOptions {
       <button @click="toggleFollowView">{{ followViewText }}</button>
       
       <!-- 速度控制 -->
-      <select @change="changeSpeed($event.target.value)">
-        <option v-for="option in speedOptions" 
-                :key="option.value" 
-                :value="option.value">
+      <div class="speed-controls">
+        <button v-for="option in speedOptions" 
+                :key="option.value"
+                :class="{ active: currentDuration === option.value }"
+                @click="changeDuration(option.value)">
           {{ option.label }}
-        </option>
-      </select>
+        </button>
+      </div>
       
       <!-- 进度条 -->
       <input type="range" 
@@ -123,7 +124,7 @@ import { useTrajectoryPlayer } from '@/composables/useTrajectoryPlayer'
 const {
   // 状态
   playState,
-  currentSpeed,
+  currentDuration,
   followView,
   currentProgress,
   currentIndex,
@@ -138,7 +139,7 @@ const {
   initializeTrajectory,
   togglePlay,
   stop,
-  changeSpeed,
+  changeDuration,
   onProgressChange,
   toggleFollowView
 } = useTrajectoryPlayer({ baseDuration: 30 })
@@ -217,15 +218,46 @@ watch(currentProgress, (progress) => {
   console.log('播放进度:', progress + '%')
 })
 
-// 自定义速度选项
-speedOptions.value = [
-  { label: '0.5x', value: 0.5 },
-  { label: '1x', value: 1 },
-  { label: '2x', value: 2 },
-  { label: '5x', value: 5 },
-  { label: '10x', value: 10 }
-]
+// speedOptions 基于 baseDuration 动态计算
+// X1 = baseDuration, X2 = baseDuration/2, X4 = baseDuration/4
+// 例如：baseDuration = 300 时
+// speedOptions = [
+//   { label: 'X1', value: 300 },  // 慢速
+//   { label: 'X2', value: 150 },  // 正常
+//   { label: 'X4', value: 75 }    // 快速
+// ]
 ```
+
+## speedOptions 动态计算机制
+
+### 概述
+
+`speedOptions` 不再使用硬编码的固定值，而是基于 `baseDuration` 参数动态计算生成。这种设计提供了更好的灵活性和一致性。
+
+### 计算规则
+
+```typescript
+const speedOptions = computed(() => [
+  { label: 'X1', value: baseDuration.value },     // 慢速：等于基础时长
+  { label: 'X2', value: baseDuration.value / 2 }, // 正常：基础时长的一半
+  { label: 'X4', value: baseDuration.value / 4 }  // 快速：基础时长的四分之一
+])
+```
+
+### 示例
+
+| baseDuration | X1 (慢速) | X2 (正常) | X4 (快速) |
+|--------------|-----------|-----------|----------|
+| 300ms        | 300ms     | 150ms     | 75ms     |
+| 600ms        | 600ms     | 300ms     | 150ms    |
+| 1200ms       | 1200ms    | 600ms     | 300ms    |
+
+### 优势
+
+1. **统一配置**: 只需修改 `baseDuration` 即可调整所有速度档位
+2. **保持比例**: 各档位之间的倍数关系始终保持一致
+3. **易于维护**: 减少硬编码，提高代码可维护性
+4. **灵活扩展**: 可轻松添加新的速度档位
 
 ## 与 Amap.vue 组件的对比优势
 
@@ -351,7 +383,17 @@ const debouncedProgressChange = debounce((value: number) => {
 
 ## 更新日志
 
-### v1.1.0 (最新)
+### v1.2.0 (最新)
+
+* 🔄 **重构速度控制系统**：speedOptions 基于 baseDuration 动态计算
+
+* 🎛️ **优化速度档位**：X1、X2、X4 对应不同的播放时长
+
+* ⚙️ **提升配置灵活性**：统一通过 baseDuration 控制所有速度档位
+
+* 📝 **完善文档**：详细说明动态计算机制和使用方法
+
+### v1.1.0
 
 * 🐛 修复视角跟随卡顿问题
 

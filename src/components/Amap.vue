@@ -5,9 +5,9 @@
         {{ playState === 'stopped' ? '播放' : playState === 'playing' ? '暂停' : '恢复' }}
       </a-button>
       <a-button @click="stop" danger>停止</a-button>
-      <a-button @click="changeSpeed(1)" :type="currentSpeed === 1 ? 'primary' : 'default'">X1</a-button>
-      <a-button @click="changeSpeed(2)" :type="currentSpeed === 2 ? 'primary' : 'default'">X2</a-button>
-      <a-button @click="changeSpeed(4)" :type="currentSpeed === 4 ? 'primary' : 'default'">X4</a-button>
+      <a-button @click="changeSpeed(300)" :type="currentDuration === 300 ? 'primary' : 'default'">X1</a-button>
+      <a-button @click="changeSpeed(150)" :type="currentDuration === 150 ? 'primary' : 'default'">X2</a-button>
+      <a-button @click="changeSpeed(75)" :type="currentDuration === 75 ? 'primary' : 'default'">X4</a-button>
       <a-button @click="toggleFollowView" :type="followView ? 'primary' : 'default'">
         {{ followView ? '视角跟随: 开' : '视角跟随: 关' }}
       </a-button>
@@ -35,6 +35,7 @@ import { ref, onMounted } from 'vue'
 // 响应式状态
 const playState = ref<'stopped' | 'playing' | 'paused'>('stopped')
 const currentSpeed = ref(1)
+const currentDuration = ref(300) // 当前播放时长(毫秒)
 const followView = ref(false)
 const mapInstance = ref<any>(null)
 const marker = ref<any>(null)
@@ -262,9 +263,8 @@ const play = () => {
     if (currentProgress.value >= 100) {
       // 进度为100%时，重置为0并从头开始播放
       currentProgress.value = 0
-      const duration = baseDuration.value / currentSpeed.value
       marker.value.moveAlong(trajectoryPoints.value, {
-        duration: duration,
+        duration: currentDuration.value,
         autoRotation: true,
       })
     } else if (currentProgress.value > 0) {
@@ -295,9 +295,9 @@ const play = () => {
             remainingDistance += calculateDistance(remainingPath[i], remainingPath[i + 1])
           }
 
-          // 基于剩余距离计算播放时长
+          // 基于剩余距离和当前duration计算播放时长
           const totalDist = totalDistance.value || 1
-          const remainingDuration = (baseDuration.value * remainingDistance / totalDist) / currentSpeed.value
+          const remainingDuration = (currentDuration.value * remainingDistance / totalDist)
 
           // 从当前位置开始播放剩余路径
           marker.value.moveAlong(remainingPath, {
@@ -307,17 +307,15 @@ const play = () => {
         }
       } else {
         // 如果无法获取当前位置，从起点开始播放
-        const duration = baseDuration.value / currentSpeed.value
         marker.value.moveAlong(trajectoryPoints.value, {
-          duration: duration,
+          duration: currentDuration.value,
           autoRotation: true,
         })
       }
     } else {
       // 进度为0，从起点开始播放（保持原有逻辑）
-      const duration = baseDuration.value / currentSpeed.value
       marker.value.moveAlong(trajectoryPoints.value, {
-        duration: duration,
+        duration: currentDuration.value,
         autoRotation: true,
       })
     }
@@ -357,8 +355,10 @@ const stop = () => {
   }
 }
 
-const changeSpeed = (speed: number) => {
-  currentSpeed.value = speed
+const changeSpeed = (duration: number) => {
+  currentDuration.value = duration
+  // 根据duration计算对应的speed值，保持兼容性
+  currentSpeed.value = baseDuration.value / duration
 
   if (playState.value === 'playing' && marker.value) {
     // 获取当前精确位置
@@ -384,25 +384,24 @@ const changeSpeed = (speed: number) => {
     }
 
     if (remainingPath.length > 1) {
-      // 计算剩余距离和时长
+      // 计算剩余距离
       let remainingDistance = 0
       for (let i = 0; i < remainingPath.length - 1; i++) {
         remainingDistance += calculateDistance(remainingPath[i], remainingPath[i + 1])
       }
 
-      // 基于剩余距离计算播放时长
+      // 基于剩余距离和新的duration计算播放时长
       const totalDist = totalDistance.value || 1
-      const remainingDuration = (baseDuration.value * remainingDistance / totalDist) / currentSpeed.value
+      const remainingDuration = (duration * remainingDistance / totalDist)
 
-      // 从当前精确位置以新速度继续播放
+      // 从当前精确位置以新duration继续播放
       marker.value.moveAlong(remainingPath, {
         duration: Math.max(remainingDuration, 5), // 确保最小时长
         autoRotation: true,
       })
     }
   }
-  // 暂停状态下切换速度时，速度值已经更新，恢复播放时会应用新速度
-  // 不需要额外处理，因为resume函数会读取当前的currentSpeed.value
+  // 暂停状态下切换duration时，duration值已经更新，恢复播放时会应用新duration
 }
 
 // 根据进度值计算对应的坐标点
@@ -495,9 +494,9 @@ const onProgressChange = (value: number) => {
     // 计算剩余距离
     const remainingDistance = totalDistance.value - currentDistance
 
-    // 计算播放时长（基于剩余距离和当前速度）
+    // 计算播放时长（基于剩余距离和当前duration）
     const totalDist = totalDistance.value || 1
-    const remainingDuration = (baseDuration.value * remainingDistance / totalDist) / currentSpeed.value
+    const remainingDuration = (currentDuration.value * remainingDistance / totalDist)
 
     // 使用moveAlong播放剩余路径
     marker.value.moveAlong(remainingPath, {
@@ -519,9 +518,9 @@ const onProgressChange = (value: number) => {
       const currentPos = marker.value.getPosition()
       const distance = calculateDistance([currentPos.lng, currentPos.lat], position)
 
-      // 基于距离和当前速度计算duration，保持与其他动画一致的速度感知
+      // 基于距离和当前duration计算播放时长，保持与其他动画一致的速度感知
       const totalDist = totalDistance.value || 1
-      const duration = Math.max((baseDuration.value * distance / totalDist) / currentSpeed.value, 5)
+      const duration = Math.max((currentDuration.value * distance / totalDist), 5)
 
       marker.value.moveTo(position, {
         duration: duration,
