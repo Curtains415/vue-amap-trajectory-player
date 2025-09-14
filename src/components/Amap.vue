@@ -36,6 +36,7 @@ import { ref, onMounted } from 'vue'
 const playState = ref<'stopped' | 'playing' | 'paused'>('stopped')
 const currentSpeed = ref(1)
 const currentDuration = ref(300) // 当前播放时长(毫秒)
+const pausedDuration = ref<number | null>(null) // 暂停时记录的duration值
 const followView = ref(false)
 const mapInstance = ref<any>(null)
 const marker = ref<any>(null)
@@ -327,6 +328,8 @@ const play = () => {
 
 const pause = () => {
   if (!marker.value) return
+  // 记录暂停时的duration值
+  pausedDuration.value = currentDuration.value
   marker.value.pauseMove()
   playState.value = 'paused'
 }
@@ -334,7 +337,53 @@ const pause = () => {
 const resume = () => {
   if (playState.value === 'paused' && marker.value) {
     playState.value = 'playing'
-    marker.value.resumeMove()
+    
+    // 检查暂停期间是否切换了速度
+    if (pausedDuration.value !== null && pausedDuration.value !== currentDuration.value) {
+      // 速度发生了变化，需要重新创建moveAlong动画
+      const currentPos = marker.value.getPosition()
+      const currentLng = currentPos.lng
+      const currentLat = currentPos.lat
+
+      // 停止当前移动
+      marker.value.stopMove()
+
+      // 找到当前位置在轨迹中的最近索引
+      const nearestIndex = findTrajectoryIndex(currentPos)
+
+      // 构建从当前精确位置开始的新路径
+      let remainingPath: [number, number][]
+
+      if (nearestIndex < trajectoryPoints.value.length - 1) {
+        remainingPath = [[currentLng, currentLat], ...trajectoryPoints.value.slice(nearestIndex + 1)]
+      } else {
+        remainingPath = [[currentLng, currentLat], trajectoryPoints.value[trajectoryPoints.value.length - 1]]
+      }
+
+      if (remainingPath.length > 1) {
+        // 计算剩余距离
+        let remainingDistance = 0
+        for (let i = 0; i < remainingPath.length - 1; i++) {
+          remainingDistance += calculateDistance(remainingPath[i], remainingPath[i + 1])
+        }
+
+        // 基于剩余距离和新的duration计算播放时长
+        const totalDist = totalDistance.value || 1
+        const remainingDuration = (currentDuration.value * remainingDistance / totalDist)
+
+        // 使用新的duration重新创建moveAlong动画
+        marker.value.moveAlong(remainingPath, {
+          duration: Math.max(remainingDuration, 5),
+          autoRotation: true,
+        })
+      }
+    } else {
+      // 速度没有变化，直接恢复播放
+      marker.value.resumeMove()
+    }
+    
+    // 清除暂停时记录的duration值
+    pausedDuration.value = null
   }
 }
 

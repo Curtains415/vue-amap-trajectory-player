@@ -28,6 +28,9 @@ export function useTrajectoryPlayer(options: TrajectoryPlayerOptions = {}) {
   // 交互状态
   const isManualSeeking = ref(false)
   const isMovingTriggered = ref(false)
+  
+  // 暂停时的速度记录
+  const pausedDuration = ref<number | null>(null)
 
   // 速度选项 - 基于baseDuration动态计算
   const speedOptions = computed(() => [
@@ -391,12 +394,75 @@ export function useTrajectoryPlayer(options: TrajectoryPlayerOptions = {}) {
     if (!marker.value) return
     marker.value.pauseMove()
     playState.value = 'paused'
+    // 记录暂停时的duration
+    pausedDuration.value = currentDuration.value
   }
 
   const resume = () => {
     if (playState.value === 'paused' && marker.value) {
       playState.value = 'playing'
-      marker.value.resumeMove()
+      
+      // 检查暂停期间是否切换了速度
+      const speedChanged = pausedDuration.value !== null && pausedDuration.value !== currentDuration.value
+      
+      // 获取当前精确位置
+      const currentPos = marker.value.getPosition()
+      const currentLng = currentPos.lng
+      const currentLat = currentPos.lat
+
+      // 如果速度发生变化，需要重新创建moveAlong
+      if (speedChanged) {
+        // 停止当前移动并重新计算路径
+        marker.value.stopMove()
+
+        // 找到当前位置在轨迹中的最近索引
+        const nearestIndex = findTrajectoryIndex(currentPos)
+
+        // 构建从当前精确位置开始的新路径
+        let remainingPath: [number, number][]
+
+        if (nearestIndex < trajectoryPoints.value.length - 1) {
+          // 从当前位置到下一个轨迹点，然后继续剩余路径
+          remainingPath = [
+            [currentLng, currentLat],
+            ...trajectoryPoints.value.slice(nearestIndex + 1),
+          ]
+        } else {
+          // 如果已经接近终点，直接到终点
+          remainingPath = [
+            [currentLng, currentLat],
+            trajectoryPoints.value[trajectoryPoints.value.length - 1],
+          ]
+        }
+
+        if (remainingPath.length > 1) {
+          // 计算剩余距离和时长
+          let remainingDistance = 0
+          for (let i = 0; i < remainingPath.length - 1; i++) {
+            remainingDistance += calculateDistance(
+              remainingPath[i],
+              remainingPath[i + 1]
+            )
+          }
+
+          // 基于剩余距离和当前duration计算播放时长
+          const totalDist = totalDistance.value || 1
+          const remainingDuration =
+            (currentDuration.value * remainingDistance) / totalDist
+
+          // 从当前精确位置以新速度重新开始播放
+          marker.value.moveAlong(remainingPath, {
+            duration: Math.max(remainingDuration, 5), // 确保最小时长
+            autoRotation: true,
+          })
+        }
+      } else {
+        // 速度没有变化，直接恢复播放
+        marker.value.resumeMove()
+      }
+      
+      // 清除暂停时的duration记录
+      pausedDuration.value = null
     }
   }
 

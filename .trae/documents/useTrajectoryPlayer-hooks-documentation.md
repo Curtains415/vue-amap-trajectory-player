@@ -349,9 +349,127 @@ const debouncedProgressChange = debounce((value: number) => {
 
 * **Hooks 文件**: `src/composables/useTrajectoryPlayer.ts`
 
+## Amap.vue 组件暂停恢复逻辑修复
+
+### 问题描述
+
+在 Amap.vue 组件中，存在暂停后切换速度再恢复播放时，新速度不生效的问题：
+
+1. **问题表现**: 暂停前是 X1 速度，暂停后切换到 X4 速度，恢复播放时仍然是 X1 速度
+2. **根本原因**: `resume()` 函数只是简单调用 `marker.value.resumeMove()`，没有检测暂停期间的速度变化
+3. **影响范围**: 用户体验不一致，暂停期间的速度切换无法正确应用
+
+### 修复方案
+
+#### 1. 添加暂停状态记录
+
+```typescript
+// 添加变量记录暂停时的duration值
+const pausedDuration = ref<number | null>(null)
+```
+
+#### 2. 修改 pause() 函数
+
+```typescript
+const pause = () => {
+  if (!marker.value) return
+  
+  // 记录暂停时的duration值
+  pausedDuration.value = currentDuration.value
+  
+  marker.value.pauseMove()
+  playState.value = 'paused'
+}
+```
+
+#### 3. 重构 resume() 函数
+
+```typescript
+const resume = () => {
+  if (playState.value === 'paused' && marker.value) {
+    playState.value = 'playing'
+    
+    // 检查暂停期间是否切换了速度
+    if (pausedDuration.value !== null && pausedDuration.value !== currentDuration.value) {
+      // 速度发生变化，需要重新创建moveAlong动画
+      const currentPos = marker.value.getPosition()
+      const currentLng = currentPos.lng
+      const currentLat = currentPos.lat
+      
+      // 停止当前移动
+      marker.value.stopMove()
+      
+      // 找到当前位置在轨迹中的最近索引
+      const nearestIndex = findTrajectoryIndex(currentPos)
+      
+      // 构建从当前精确位置开始的新路径
+      let remainingPath: [number, number][]
+      
+      if (nearestIndex < trajectoryPoints.value.length - 1) {
+        remainingPath = [[currentLng, currentLat], ...trajectoryPoints.value.slice(nearestIndex + 1)]
+      } else {
+        remainingPath = [[currentLng, currentLat], trajectoryPoints.value[trajectoryPoints.value.length - 1]]
+      }
+      
+      if (remainingPath.length > 1) {
+        // 计算剩余距离
+        let remainingDistance = 0
+        for (let i = 0; i < remainingPath.length - 1; i++) {
+          remainingDistance += calculateDistance(remainingPath[i], remainingPath[i + 1])
+        }
+        
+        // 基于剩余距离和新的duration计算播放时长
+        const totalDist = totalDistance.value || 1
+        const remainingDuration = (currentDuration.value * remainingDistance / totalDist)
+        
+        // 使用新的duration重新创建moveAlong动画
+        marker.value.moveAlong(remainingPath, {
+          duration: Math.max(remainingDuration, 5),
+          autoRotation: true,
+        })
+      }
+    } else {
+      // 速度没有变化，直接恢复播放
+      marker.value.resumeMove()
+    }
+    
+    // 清除暂停状态记录
+    pausedDuration.value = null
+  }
+}
+```
+
+### 修复效果
+
+1. **速度切换生效**: 暂停后切换速度，恢复播放时立即应用新速度
+2. **动画连续性**: 重新创建的动画从当前精确位置开始，保证轨迹连续
+3. **性能优化**: 只在速度变化时重新创建动画，无变化时直接恢复
+4. **用户体验**: 暂停期间的速度切换能够正确响应，交互更直观
+
+### 技术要点
+
+1. **状态同步**: 通过 `pausedDuration` 变量记录暂停时的状态
+2. **条件判断**: 恢复时比较当前速度与暂停时速度，决定处理方式
+3. **动画重建**: 速度变化时停止当前动画，重新计算并创建新动画
+4. **位置精确**: 使用 `marker.getPosition()` 获取当前精确位置，确保轨迹连续
+
+### 与 useTrajectoryPlayer.ts 的一致性
+
+此修复使 Amap.vue 组件的暂停恢复逻辑与 useTrajectoryPlayer.ts hooks 保持一致，确保两个版本的轨迹播放器都能正确处理暂停期间的速度切换。
+
 ## 更新日志
 
-### v1.1.0 (最新)
+### v1.2.0 (最新)
+
+* 🐛 修复 Amap.vue 组件暂停恢复逻辑问题
+
+* ✨ 添加暂停期间速度变化检测机制
+
+* 🔧 优化暂停恢复时的动画处理
+
+* 📝 完善技术文档，记录修复详情
+
+### v1.1.0
 
 * 🐛 修复视角跟随卡顿问题
 
