@@ -1,30 +1,13 @@
 # useTrajectoryPlayer Hooks 技术文档
 
-## 概述
-
-`useTrajectoryPlayer` 是一个基于 Vue 3 Composition API 的轨迹播放器 hooks，专为高德地图轨迹动画设计。它提供了完整的轨迹播放控制功能，包括播放/暂停、速度调节、进度控制和视角跟随等特性。
-
-## 核心特性
-
-* 🎮 **完整的播放控制**：支持播放、暂停、停止、恢复等操作
-
-* ⚡ **多速度播放**：基于 baseDuration 动态计算的 X1、X2、X4 速度选项，支持自定义时长
-
-* 📍 **精确进度控制**：基于距离计算的精确进度定位
-
-* 👁️ **视角跟随**：可选的地图视角自动跟随功能
-
-* 🔄 **响应式状态**：所有状态都是响应式的，便于 UI 绑定
-
-* 🚀 **性能优化**：已修复视角跟随卡顿问题，确保流畅体验
-
 ## API 接口
 
 ### 类型定义
 
 ```typescript
 export interface TrajectoryPlayerOptions {
-  baseDuration?: number // 基础播放时长（毫秒），默认 30
+  baseDuration?: number // 基础播放时长（毫秒），默认 1000
+  followView?: boolean // 是否视角跟随
 }
 ```
 
@@ -33,7 +16,8 @@ export interface TrajectoryPlayerOptions {
 | 参数                   | 类型                      | 默认值 | 描述         |
 | -------------------- | ----------------------- | --- | ---------- |
 | options              | TrajectoryPlayerOptions | {}  | 配置选项       |
-| options.baseDuration | number                  | 300  | 基础播放时长（毫秒） |
+| options.baseDuration | number                  | 1000  | 基础播放时长（毫秒） |
+| options.followView | boolean                  | true  | 是否视角跟随 |
 
 ### 返回值
 
@@ -118,7 +102,7 @@ export interface TrajectoryPlayerOptions {
 
 <script setup lang="ts">
 import { onMounted } from 'vue'
-import { useTrajectoryPlayer } from '@/composables/useTrajectoryPlayer'
+import { useTrajectoryPlayer } from '#/composables/useTrajectoryPlayer'
 
 // 初始化 hooks
 const {
@@ -206,7 +190,8 @@ onMounted(() => {
 const {
   // ... 其他返回值
 } = useTrajectoryPlayer({
-  baseDuration: 60 // 更长的基础播放时长
+  baseDuration: 60, // 更长的基础播放时长
+  followView: false // 关闭视角跟随
 })
 
 // 监听状态变化
@@ -251,165 +236,3 @@ const speedOptions = computed(() => [
 | 300ms        | 300ms     | 150ms     | 75ms     |
 | 600ms        | 600ms     | 300ms     | 150ms    |
 | 1200ms       | 1200ms    | 600ms     | 300ms    |
-
-### 优势
-
-1. **统一配置**: 只需修改 `baseDuration` 即可调整所有速度档位
-2. **保持比例**: 各档位之间的倍数关系始终保持一致
-3. **易于维护**: 减少硬编码，提高代码可维护性
-4. **灵活扩展**: 可轻松添加新的速度档位
-
-## 与 Amap.vue 组件的对比优势
-
-### 1. 代码复用性
-
-* **Hooks**: 逻辑可在多个组件间复用
-
-* **组件**: 逻辑耦合在单个组件内
-
-### 2. 测试友好
-
-* **Hooks**: 可独立测试业务逻辑
-
-* **组件**: 需要完整的组件环境
-
-### 3. 关注点分离
-
-* **Hooks**: 业务逻辑与 UI 分离
-
-* **组件**: 逻辑与视图混合
-
-### 4. 灵活性
-
-* **Hooks**: 可按需使用部分功能
-
-* **组件**: 必须使用完整组件
-
-### 5. 类型安全
-
-* **Hooks**: 完整的 TypeScript 类型支持
-
-* **组件**: 类型支持相对有限
-
-## 性能优化
-
-### 已修复的问题
-
-1. **视角跟随卡顿问题**
-
-   * **问题**: moving 事件中条件判断与实际操作不一致
-
-   * **修复**: 统一使用 `mapInstance.value` 进行条件判断和操作
-
-   * **效果**: 视角跟随功能流畅无卡顿
-
-2. **内存泄漏预防**
-
-   * 正确清理事件监听器
-
-   * 及时重置状态和引用
-
-3. **计算优化**
-
-   * 预计算累积距离，避免重复计算
-
-   * 使用高效的距离计算算法
-
-### 性能建议
-
-1. **轨迹点数量**: 建议控制在 1000 个点以内
-2. **播放速度**: 避免过高的播放速度导致渲染压力
-3. **视角跟随**: 在不需要时关闭以节省性能
-4. **进度更新**: 避免过于频繁的手动进度调整
-
-## 最佳实践
-
-### 1. 错误处理
-
-```typescript
-// 检查轨迹数据有效性
-if (trajectoryPoints.value.length < 2) {
-  console.warn('轨迹点数量不足，无法播放')
-  return
-}
-
-// 检查地图实例
-if (!map || !marker) {
-  console.error('地图或标记实例未初始化')
-  return
-}
-```
-
-### 2. 状态管理
-
-```typescript
-// 使用 computed 进行状态派生
-const canPlay = computed(() => {
-  return trajectoryPoints.value.length >= 2 && playState.value === 'stopped'
-})
-
-const canPause = computed(() => {
-  return playState.value === 'playing'
-})
-```
-
-### 3. 事件处理
-
-```typescript
-// 防抖处理进度变化
-import { debounce } from 'lodash-es'
-
-const debouncedProgressChange = debounce((value: number) => {
-  onProgressChange(value)
-}, 100)
-```
-
-## 注意事项
-
-1. **地图实例**: 确保在地图完全加载后再调用 `initializeTrajectory`
-2. **轨迹数据**: 轨迹点应为有效的经纬度坐标
-3. **内存管理**: 组件销毁时记得清理相关资源
-4. **浏览器兼容**: 需要支持 ES6+ 的现代浏览器
-
-## 测试路由
-
-项目中的测试页面路由地址：
-
-* **开发环境**: `http://localhost:5173/trajectory-v2-test`
-
-* **组件路径**: `src/pages/TrajectoryPlayerV2Test.vue`
-
-* **Hooks 文件**: `src/composables/useTrajectoryPlayer.ts`
-
-## 更新日志
-
-### v1.2.0 (最新)
-
-* 🔄 **重构速度控制系统**：speedOptions 基于 baseDuration 动态计算
-
-* 🎛️ **优化速度档位**：X1、X2、X4 对应不同的播放时长
-
-* ⚙️ **提升配置灵活性**：统一通过 baseDuration 控制所有速度档位
-
-* 📝 **完善文档**：详细说明动态计算机制和使用方法
-
-### v1.1.0
-
-* 🐛 修复视角跟随卡顿问题
-
-* ⚡ 优化性能表现
-
-* 📝 完善类型定义
-
-* 🔧 改进错误处理
-
-### v1.0.0
-
-* 🎉 初始版本发布
-
-* ✨ 基础播放控制功能
-
-* 📍 进度控制和视角跟随
-
-* 🚀 多速度播放支持
-

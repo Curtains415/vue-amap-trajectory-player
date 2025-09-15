@@ -2,16 +2,23 @@ import { ref, computed } from 'vue'
 
 export interface TrajectoryPlayerOptions {
   baseDuration?: number // 基础播放时长（毫秒）
+  followView?: boolean // 是否视角跟随
 }
 
 export function useTrajectoryPlayer(options: TrajectoryPlayerOptions = {}) {
+  const mergedOptions = {
+    baseDuration: 1000,
+    followView: true,
+    ...options
+  }
+  
   // 基础配置
-  const baseDuration = ref(options.baseDuration || 300)
+  const baseDuration = ref(mergedOptions.baseDuration)
 
   // 播放状态
   const playState = ref<'stopped' | 'playing' | 'paused'>('stopped')
   const currentDuration = ref(baseDuration.value)
-  const followView = ref(true)
+  const followView = ref(mergedOptions.followView)
 
   // 地图和轨迹相关
   const marker = ref<any>(null)
